@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Niryo Conveyor Webserver</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(
+                270deg,
+                red,
+                orange,
+                yellow,
+                green,
+                cyan,
+                blue,
+                violet,
+                red
+            );
+            background-size: 1400% 1400%;
+            animation: rainbowBackground 15s ease infinite;
+            cursor: url("/static/cursor.png") 16 16, auto;
+        }
+
+        @keyframes rainbowBackground {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        h1, h2, h3, p, label {
+            color: white;
+            text-shadow: 1px 1px 3px black;
+        }
+
+        button {
+            padding: 12px 24px;
+            margin: 8px;
+            font-size: 18px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            transform: scale(1.04);
+        }
+
+        select {
+            padding: 8px;
+            border-radius: 8px;
+            min-width: 180px;
+        }
+
+        .box {
+            background: rgba(0, 0, 0, 0.35);
+            padding: 25px;
+            margin: 20px auto;
+            max-width: 700px;
+            border-radius: 20px;
+        }
+
+        .status {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .running {
+            color: #9cff9c;
+        }
+
+        .stopped {
+            color: #ffb3b3;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .row label {
+            text-align: right;
+        }
+
+        .row select {
+            justify-self: left;
+        }
+
+        .log-box {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.45);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            max-height: 260px;
+            overflow-y: auto;
+            font-family: Consolas, monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .hint {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h1>Niryo Conveyor Control</h1>
+
+        <h2>Conveyor Belt</h2>
+
+        <p class="status">
+            Current status:
+            {% if conveyor_running %}
+                <span class="running">Running</span>
+            {% else %}
+                <span class="stopped">Stopped</span>
+            {% endif %}
+        </p>
+
+        <p>Objects caught: {{ catch_count }} / {{ max_catch }}</p>
+
+        <form action="/control" method="post">
+            <button type="submit" name="action" value="start">Start</button>
+            <button type="submit" name="action" value="stop">Stop</button>
+        </form>
+
+        <form action="/reset_count" method="post">
+            <button type="submit">Reset Counter</button>
+        </form>
+    </div>
+
+    <div class="box">
+        <h2>Voice Control</h2>
+        <p class="hint">Voice commands in Python console: setup, start, stop</p>
+        <p>Selected color: {{ voice_status["color"] }}</p>
+        <p>Selected shape: {{ voice_status["shape"] }}</p>
+        <p>Selected place: {{ voice_status["place"] }}</p>
+    </div>
+
+    <div class="box">
+        <h2>Object Sorting Plan</h2>
+        <p class="hint">Used when voice setup is not active.</p>
+
+        <form action="/set_sorting_rules" method="post">
+
+            <div class="row">
+                <label>Green Circle:</label>
+                <select name="green_circle">
+                    <option value="Alpha Zone" {% if sorting_rules["green_circle"] == "Alpha Zone" %}selected{% endif %}>Alpha Zone</option>
+                    <option value="Beta Zone" {% if sorting_rules["green_circle"] == "Beta Zone" %}selected{% endif %}>Beta Zone</option>
+                    <option value="Vision Workspace" {% if sorting_rules["green_circle"] == "Vision Workspace" %}selected{% endif %}>Vision Workspace</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Green Square:</label>
+                <select name="green_square">
+                    <option value="Alpha Zone" {% if sorting_rules["green_square"] == "Alpha Zone" %}selected{% endif %}>Alpha Zone</option>
+                    <option value="Beta Zone" {% if sorting_rules["green_square"] == "Beta Zone" %}selected{% endif %}>Beta Zone</option>
+                    <option value="Vision Workspace" {% if sorting_rules["green_square"] == "Vision Workspace" %}selected{% endif %}>Vision Workspace</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Blue Circle:</label>
+                <select name="blue_circle">
+                    <option value="Alpha Zone" {% if sorting_rules["blue_circle"] == "Alpha Zone" %}selected{% endif %}>Alpha Zone</option>
+                    <option value="Beta Zone" {% if sorting_rules["blue_circle"] == "Beta Zone" %}selected{% endif %}>Beta Zone</option>
+                    <option value="Vision Workspace" {% if sorting_rules["blue_circle"] == "Vision Workspace" %}selected{% endif %}>Vision Workspace</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Blue Square:</label>
+                <select name="blue_square">
+                    <option value="Alpha Zone" {% if sorting_rules["blue_square"] == "Alpha Zone" %}selected{% endif %}>Alpha Zone</option>
+                    <option value="Beta Zone" {% if sorting_rules["blue_square"] == "Beta Zone" %}selected{% endif %}>Beta Zone</option>
+                    <option value="Vision Workspace" {% if sorting_rules["blue_square"] == "Vision Workspace" %}selected{% endif %}>Vision Workspace</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Red Circle:</label>
+                <select name="red_circle">
+                    <option value="Alpha Zone" {% if sorting_rules["red_circle"] == "Alpha Zone" %}selected{% endif %}>Alpha Zone</option>
+                    <option value="Beta Zone" {% if sorting_rules["red_circle"] == "Beta Zone" %}selected{% endif %}>Beta Zone</option>
+                    <option value="Vision Workspace" {% if sorting_rules["red_circle"] == "Vision Workspace" %}selected{% endif %}>Vision Workspace</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <label>Red Square:</label>
+                <select name="red_square">
+                    <option value="Alpha Zone" {% if sorting_rules["red_square"] == "Alpha Zone" %}selected{% endif %}>Alpha Zone</option>
+                    <option value="Beta Zone" {% if sorting_rules["red_square"] == "Beta Zone" %}selected{% endif %}>Beta Zone</option>
+                    <option value="Vision Workspace" {% if sorting_rules["red_square"] == "Vision Workspace" %}selected{% endif %}>Vision Workspace</option>
+                </select>
+            </div>
+            <button type="submit">Save Destination Plan</button>
+        </form>
+        <h3>Saved Plan</h3>
+        <p>Green Circle → {{ sorting_rules["green_circle"] }}</p>
+        <p>Green Square → {{ sorting_rules["green_square"] }}</p>
+        <p>Blue Circle → {{ sorting_rules["blue_circle"] }}</p>
+        <p>Blue Square → {{ sorting_rules["blue_square"] }}</p>
+        <p>Red Circle → {{ sorting_rules["red_circle"] }}</p>
+        <p>Red Square → {{ sorting_rules["red_square"] }}</p>
+    </div>
+
+    <div class="box">
+        <h2>Robot Log</h2>
+        <div class="log-box">
+{% if log_lines %}
+{% for line in log_lines %}{{ line }}
+{% endfor %}
+{% else %}
+No log messages yet.
+{% endif %}
+        </div>
+    </div>
+
+</body>
+</html>
